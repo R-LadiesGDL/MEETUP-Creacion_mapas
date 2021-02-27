@@ -7,6 +7,10 @@ El objetivo de la sesión es introducir a las disntintas metodologías para la e
 
 #### Package requerida
 ```
+install.packages(c("devtools", "ggplot2", "maps", "dplyr", "rgdal", "sf", "raster"
+                 "plotly", "scales", "viridis", "leaflet", "proj4")
+
+
 if (!require("devtools")) {
           install.packages("devtools", force=TRUE)
         }
