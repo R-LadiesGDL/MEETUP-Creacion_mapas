@@ -17,3 +17,4 @@ if (!require("devtools")) {
         devtools::install_github("diegovalle/mxmaps")
 
 ```
+
