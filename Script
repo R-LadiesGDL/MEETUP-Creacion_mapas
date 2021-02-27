@@ -293,18 +293,18 @@ merge2 <- merge(merge_feminicidios, df_mxstate_2020, by.x="NOMGEO", by.y="state_
 # Creación de la variable que podenere las víctimas de feminicidios por cada 100 mil habitantes.
 merge_tasa<-merge2 %>% 
   group_by(NOMGEO) %>% 
-  summarise(value= (Feminicidios_total/pop)*100000) 
+  summarise(Tasa= (Feminicidios_total/pop)*100000) 
 
-
+head(merge_tasa)
 
 merge_final<- merge(df_mxstate_2020, merge_tasa, by.x="state_name_official", by.y="NOMGEO", all.x = TRUE)
-
+head(merge_final)
 #Left outer: merge(x = df1, y = df2, by = "CustomerId", all.x = TRUE)
 
-
-
-library(data.table)
-setnames(merge_final, old = "Tasa", new="value") #La transformación de las tasas a "value".
+merge_final$value<-NULL #Eliminar value
+ 
+  library(data.table)
+  setnames(merge_final, old = "Tasa", new="value") #La transformación de las tasas a "value".
 
 
 mxhexbin_choropleth(merge_final) +  
