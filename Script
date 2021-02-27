@@ -1,0 +1,333 @@
+###### PRIMERA METODOLOGÍA ######
+
+#### Mapear sin shapefile ####
+library(ggplot2)
+library(maps)
+
+world <- map_data("world")
+head(world)
+unique(world$region)
+
+#Mapa del mundo con ggplot
+ggplot()+ 
+  geom_polygon(data = world, 
+                       aes(x=long, 
+                           y = lat, 
+                           group = group)) + 
+  coord_fixed(1.3)
+
+
+
+library(dplyr)
+#Ejemplo para México.            
+world %>% 
+  filter(region=="Mexico") %>% 
+  ggplot()+ geom_polygon(aes(x=long, 
+                             y = lat,
+                             group = group),
+                         fill= "magenta4")+
+  labs(title= "México",
+       caption = "Elaboración propia con base a los datos de 'world' paquetería de R")
+
+
+
+
+####Uso de shapefiles ####
+##SHP del Marco Geoestadístico de INEGI.
+
+library(rgdal)
+library(sf)  
+library(raster)
+library(ggplot2)
+
+ent_shp <- st_read("C:/Users/Admin/Desktop/R _Ladies/conjunto_de_datos/00ent.shp")
+st_geometry(ent_shp)
+
+names(ent_shp)
+head(ent_shp)
+
+# Ejemplo 1: mapa de México por entidades.
+ggplot(data = ent_shp)+
+  geom_sf()
+
+# Base de datos
+base_victimas <- read.csv("C:/Users/Admin/Desktop/R _Ladies/Estatal-Victimas-2015-2021_ene2021.csv", encoding="UTF8")
+
+names(base_victimas)
+head(base_victimas)
+
+
+# La unión de las bases a través de las entidades en ambas bases (Shapefile y CSV)
+unique(base_victimas$Entidad)
+unique(ent_shp$NOMGEO)
+
+
+# Ordenar la base para tener el conteo total de los feminicidios estatales para el año 2020
+base_victimas <- base_victimas %>% 
+  group_by(Entidad, `Tipo.de.delito`) %>% 
+  filter(`Tipo.de.delito`=="Feminicidio", `Año`==2020) %>% 
+  summarise(ene=sum(Enero),
+            feb=sum(Febrero),
+            mar=sum(Marzo),
+            abr=sum(Abril),
+            may=sum(Mayo),
+            jun=sum(Junio),
+            jul=sum(Julio),
+            ago=sum(Agosto),
+            sep=sum(Septiembre),
+            oct=sum(Octubre),
+            nov=sum(Noviembre),
+            dic=sum(Diciembre),
+            Feminicidios_total=sum(ene+feb+mar+abr+ 
+                                     may+ jun + jul+ ago+ sep+
+                                     oct+ nov+ dic))
+
+
+# Función de merge para unir los totales de feminicidios con la geometria del shapefile:
+merge_feminicidios <- merge(ent_shp, base_victimas, by.x = "NOMGEO", by.y = "Entidad", all.x = TRUE)
+
+head(merge_feminicidios)
+names(merge_feminicidios)
+
+merge_feminicidios %>% 
+  ggplot(aes(x = NOMGEO, y= Feminicidios_total))+
+  geom_col()+ scale_fill_viridis_d(option="magma", direction = -1)+ 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))->grafico_muestra
+
+library(plotly)
+ggplotly(grafico_muestra)
+
+
+
+# Georreferencias con el shapepfile del merge_feminicidios
+ggplot(data = merge_feminicidios)+
+  geom_sf(aes(fill=Feminicidios_total))
+
+
+ggplot(data = merge_feminicidios, aes(fill=as.factor(Feminicidios_total)))+
+  geom_sf()+
+  labs(title = "Total de víctimas de feminicidios en el año 2020",
+       caption = "Elaborado con base a los datos abiertos del SESNP, 2020")
+    
+    
+  
+    library(scales)
+    library(viridis)
+    
+    
+ggplot(data = merge_feminicidios,
+       aes(fill=as.factor(Feminicidios_total)))+
+  geom_sf()+
+  scale_fill_viridis_d(option="viridis", direction = -1) +
+  labs(title = "Total de víctimas de feminicidios en el año 2020",
+       caption = "Elaborado con base a los datos abiertos del SESNP, 2020",
+       fill="Víctimas de feminicidios")+
+  theme(legend.position = "top")+ 
+  theme_minimal()-> ejemplo1 
+
+ggplotly(ejemplo1)
+
+
+
+    
+
+    #Rangos en la base para control en el mapa    
+    
+    table(Feminicidios_total = factor(cut(merge_feminicidios$Feminicidios_total, breaks = 4)))
+    
+    
+    
+    merge_feminicidios <- merge_feminicidios %>% 
+      mutate(Rango=case_when(Feminicidios_total < 39 ~ "Baja",
+                             between(Feminicidios_total, 40, 77) ~ "Media",
+                             between(Feminicidios_total, 78, 120) ~ "Media-Alta",
+                             Feminicidios_total > 120 ~ "Alta"))
+    
+    
+    
+    merge_feminicidios <- merge_feminicidios %>% 
+      mutate(Rango=factor(Rango, 
+                          levels = c("Alta", "Media-Alta", "Media", "Baja")))
+    levels(merge_feminicidios$Rango)
+    
+    
+    head(merge_feminicidios)
+    
+    
+    
+
+ggplot(data = merge_feminicidios,
+       aes(fill=as.factor(Rango)))+
+  geom_sf()+
+  scale_fill_manual(values=c("#88419d", "#8c96c6", "#b3cde3", "#edf8fb"))+
+  labs(title = "Total de víctimas de feminicidios en el año 2020",
+       subtitle = "Rango del total de prevalencia de víctimas de feminicidio",
+       caption = "Elaborado con base a los datos abiertos del SESNP, 2020",
+       fill="Rango de feminicidios")+
+  theme_minimal()+ 
+  theme(legend.position = "bottom") -> ejemplo2
+
+
+
+  ggplotly(ejemplo2)
+
+
+
+##### SEGUNDA METODOLOGÍA ##### 
+
+library(leaflet)      
+      
+#Ejemplos de las funciones básicas de leaflet
+leaflet() %>% 
+  addTiles() 
+      
+
+leaflet() %>%
+  addTiles() %>%
+  addMarkers(lng = -99.1412385320736, lat = 19.43567503139444,
+             popup = "Bellas Artes")      
+
+
+library(proj4)
+s_ent<- st_transform(ent_shp, "+proj=longlat +datum=WGS84")
+
+
+    
+leaf_merge<- merge(s_ent, base_victimas, by.x = "NOMGEO", by.y = "Entidad", all.x = TRUE)
+# leaf_merge<- st_transform(leaf_merge, "+proj=longlat +datum=WGS84")
+
+
+leaflet(options = leafletOptions(zoomControl = T)) %>% 
+  addProviderTiles("Esri.WorldTerrain") %>%
+  addPolygons(data = leaf_merge$geometry)
+      
+      
+palnumeric <- colorNumeric("viridis", domain = leaf_merge$Feminicidios_total, reverse = TRUE)
+
+      
+leaflet(leaf_merge) %>% # Informacion geografica
+  addProviderTiles("Esri.WorldTerrain") %>%
+  addPolygons(color = "#444444" ,
+              weight = 1, # Grosor de la linea de frontera
+              opacity = 1.0, # Opacidad del color de relleno
+              fillOpacity = 0.9,  # Opacidad de la linea de frontera
+              fillColor = ~palnumeric(leaf_merge$Feminicidios_total), # Color de llenado
+              layerId = ~leaf_merge$NOMGEO,                  
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE), #highlight cuando pasas el cursor
+              label = ~leaf_merge$Feminicidios_total ,                                  # etiqueta cuando pasas el cursor
+              labelOptions = labelOptions(direction = "auto")) 
+
+      
+
+
+
+##### TERCERA METODOLOGÍA ##### 
+  
+        # Para la instalación
+        #if (!require("devtools")) {
+        #install.packages("devtools", force=TRUE)}
+        #devtools::install_github("diegovalle/mxmaps")
+
+
+# Cargar la paquetería
+library(mxmaps)
+
+
+# Explorar las funciones y datos que contiene para el año 2020.
+
+# Base de datos que almacena información al censo 2020.
+data("df_mxstate_2020") 
+
+head(df_mxstate_2020) 
+
+
+
+# Visualización simple de las distintas capas.
+# Parte de las características de "mxmaps" recae en su base, para poder georreferenciar
+# con esta paquetería es necesario que los datos que queremos pintar se encuentrre en la variable:
+# de df_mxstate_2020$value.
+
+
+# Ejemplo 
+df_mxstate_2020$value <- df_mxstate_2020$pop
+
+mxstate_choropleth(df_mxstate_2020, 
+                   num_colors = 3,
+                   title = "Ejemplo: Poblacion",
+                   legend = "Poblacion total")
+
+
+
+mxhexbin_choropleth(df_mxstate_2020, num_colors=3,
+                    legend = "Poblacion total")+ 
+  labs(title = "Ejemplo: Poblacion total.",
+       subtitle = "Mapa hexagonal")
+
+
+
+
+            mxhexbin_choropleth(df_mxstate_2020, 
+                                legend = "Población total")+ 
+              labs(title = "Ejemplo 3: Población total.",
+                   subtitle = "Mapa hexagonal",
+                   fill = "Value",
+                   caption = "Elaboración propia con base a 'mxmaps' de Diego Valle- Jones")+
+              scale_fill_manual("Total de pobllación", 
+                                values = c("mediumorchid4", "lightsalmon3",
+                                           "pink4", "slateblue3", "yellow2",
+                                           "palegreen3", "honeydew3"))+
+              theme_minimal()
+
+
+# MxMaps con Merge_Feminicidios
+
+# Merge2 para población en Mxmaps con Victimas de mi base Merge_Feminicidios
+
+unique(merge_feminicidios$NOMGEO)
+unique(df_mxstate_2020$state_name_official)
+
+merge2 <- merge(merge_feminicidios, df_mxstate_2020, by.x="NOMGEO", by.y="state_name_official", all.x = TRUE)
+
+
+# Creación de la variable que podenere las víctimas de feminicidios por cada 100 mil habitantes.
+merge_tasa<-merge2 %>% 
+  group_by(NOMGEO) %>% 
+  summarise(value= (Feminicidios_total/pop)*100000) 
+
+
+
+merge_final<- merge(df_mxstate_2020, merge_tasa, by.x="state_name_official", by.y="NOMGEO", all.x = TRUE)
+
+#Left outer: merge(x = df1, y = df2, by = "CustomerId", all.x = TRUE)
+
+
+
+library(data.table)
+setnames(merge_final, old = "Tasa", new="value") #La transformación de las tasas a "value".
+
+
+mxhexbin_choropleth(merge_final) +  
+  labs(title="Feminicidios por cada 100 mil habitantes por entidad en México, 2020",
+       fill="Tasa") +
+  theme_minimal() 
+
+
+
+mxhexbin_choropleth(merge_final, num_colors = 1) +  
+  labs(title="Feminicidios por cada 100 mil habitantes por entidad en México, 2020", 
+       caption="Elaborado por R-Ladies GDL con base al SESNSP, 2020.",
+       fill="Tasa") +
+  scale_fill_gradient(
+                      low = "plum", 
+                      high = "magenta4",
+                      guide = "colourbar")+
+  theme_minimal()->ejemplo3
+
+ggplotly(ejemplo3)            
+
+
+
+
+
+
