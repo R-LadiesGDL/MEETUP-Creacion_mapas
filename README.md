@@ -1,2 +1,3 @@
-# MeetUp-Creaci-n-de-mapas
+# MEET UP: CREACIÓN DE MAPAS
+
 Elaboración de mapas con distintas packages.
