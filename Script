@@ -89,8 +89,10 @@ merge_feminicidios <- merge(ent_shp, base_victimas, by.x = "NOMGEO", by.y = "Ent
 head(merge_feminicidios)
 names(merge_feminicidios)
 
+library(viridis)
+
 merge_feminicidios %>% 
-  ggplot(aes(x = NOMGEO, y= Feminicidios_total))+
+  ggplot(aes(x = NOMGEO, y= Feminicidios_total, fill=NOMGEO))+
   geom_col()+ scale_fill_viridis_d(option="magma", direction = -1)+ 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))->grafico_muestra
 
@@ -112,7 +114,6 @@ ggplot(data = merge_feminicidios, aes(fill=as.factor(Feminicidios_total)))+
     
   
     library(scales)
-    library(viridis)
     
     
 ggplot(data = merge_feminicidios,
